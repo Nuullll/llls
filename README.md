@@ -21,3 +21,12 @@ Mostly stolen from [clangd design: Entry point and JSON-RPC](https://clangd.llvm
   - [x] Messages
 - JSON transport
   - [x] Mirroring input requests
+
+## Build
+
+```bash
+mkdir build
+cd build
+cmake -G Ninja -DLLVM_DIR=$LLVM_BUILD_DIR/lib/cmake/llvm ..
+ninja
+```
