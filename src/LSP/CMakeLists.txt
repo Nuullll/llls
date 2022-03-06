@@ -1,5 +1,6 @@
 add_library(LSP
   Protocol.cpp
+  Transport.cpp
 )
 
 target_include_directories(LSP

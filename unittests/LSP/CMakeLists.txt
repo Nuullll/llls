@@ -1,5 +1,6 @@
 add_unittest(LLLSUnitTests LSPTests
   Protocol.cpp
+  Transport.cpp
 )
 
 target_link_libraries(LSPTests
