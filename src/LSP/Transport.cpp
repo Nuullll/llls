@@ -2,6 +2,7 @@
 #include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/JSON.h"
@@ -12,6 +13,7 @@
 // Tries to read a line up to and including \n.
 static bool readLine(std::FILE *In, llvm::SmallVectorImpl<char> &Out,
                      llvm::raw_ostream &Mirror) {
+  LLVM_DEBUG(llvm::dbgs() << "Reading line\n");
   static constexpr int BufSize = 128;
   size_t Size = 0;
   Out.clear();
@@ -19,7 +21,8 @@ static bool readLine(std::FILE *In, llvm::SmallVectorImpl<char> &Out,
     Out.resize_for_overwrite(Size + BufSize);
     std::fgets(&Out[Size], BufSize, In);
     Mirror << llvm::StringRef(&Out[Size]);
-    LLVM_DEBUG(llvm::dbgs() << "Readline: " << llvm::StringRef(&Out[Size]));
+    LLVM_DEBUG(llvm::dbgs().indent(2)
+               << "got: " << llvm::StringRef(&Out[Size]) << '\n');
     size_t Read = std::strlen(&Out[Size]);
     if (Read > 0 && Out[Size + Read - 1] == '\n') {
       Out.resize(Size + Read);
@@ -33,10 +36,13 @@ static bool readLine(std::FILE *In, llvm::SmallVectorImpl<char> &Out,
 static bool readNBytes(std::FILE *In, unsigned N,
                        llvm::SmallVectorImpl<char> &Out,
                        llvm::raw_ostream &Mirror) {
+  LLVM_DEBUG(llvm::dbgs() << "Reading " << N << " bytes\n");
   Out.clear();
   Out.resize_for_overwrite(N);
   std::fread(&Out[0], 1, N, In);
   Mirror << Out;
+  LLVM_DEBUG(llvm::dbgs().indent(2)
+             << "got: " << llvm::StringRef(&Out[0]) << '\n');
   return true;
 }
 
@@ -45,8 +51,10 @@ namespace lsp {
 
 void JSONTransport::run() {
   llvm::json::Value Data = nullptr;
-  bool OK = Style == Standard ? readStandardJSONMessage(Data)
-                              : readDelimitedJSONMessage(Data);
+  while (true) {
+    bool OK = Style == Standard ? readStandardJSONMessage(Data)
+                                : readDelimitedJSONMessage(Data);
+  }
 }
 
 bool JSONTransport::readStandardJSONMessage(llvm::json::Value &Data) {
