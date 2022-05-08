@@ -49,13 +49,26 @@ static bool readNBytes(std::FILE *In, unsigned N,
 namespace llls {
 namespace lsp {
 
+static void writeJSONResponse(const llvm::json::Value &Response) {
+  llvm::outs() << "Content-Length: ";
+  std::string S;
+  llvm::raw_string_ostream SS(S);
+  SS << Response;
+  llvm::outs() << S.size() << "\r\n\r\n" << S;
+  llvm::outs().flush();
+  LLVM_DEBUG(llvm::dbgs() << "Wrote " << S.size() << " bytes JSON to stdout:\n"
+                          << Response << '\n');
+}
+
 void JSONTransport::run(int AutoStopThreshold) {
   llvm::json::Value Data = nullptr;
+  llvm::json::Value Response = nullptr;
   while (true) {
     bool OK = Style == Standard ? readStandardJSONMessage(Data)
                                 : readDelimitedJSONMessage(Data);
-    LSPServer.dispatch(Data);
-
+    auto Response = LSPServer.dispatch(Data);
+    if (Response)
+      writeJSONResponse(*Response);
     // Auto stop after receiving N messages (for test only)
     if (AutoStopThreshold > 0 && --AutoStopThreshold == 0)
       return;

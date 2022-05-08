@@ -3,27 +3,41 @@
 
 #include "llvm/ADT/STLFunctionalExtras.h"
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/JSON.h"
 #include <functional>
 
 namespace llls {
 namespace lsp {
 
+struct ServerInfo {
+  std::string Name;
+  std::string Version;
+
+  auto toJSON() const {
+    return llvm::json::Object{{"name", Name}, {"version", Version}};
+  }
+};
+
 class Server {
   using RequestHandlerTy =
-      std::function<void(const llvm::json::Object *)>;
-  using NotificationHandlerTy =
-      std::function<void(const llvm::json::Object *)>;
+      std::function<void(Server &S, const llvm::json::Object *, llvm::json::Value &)>;
+  using NotificationHandlerTy = std::function<void(Server &S, const llvm::json::Object *)>;
 
 public:
-  Server();
-  void dispatch(const llvm::json::Value &Message);
+  Server() : Info{"llls", "1.0"} {
+    initializeDispatchTables();
+  }
+  llvm::Optional<llvm::json::Value> dispatch(const llvm::json::Value &Message);
+  const ServerInfo &getInfo() const { return Info; }
 
 private:
-  void initializeDispatchMap();
+  void initializeDispatchTables();
 
 private:
-  llvm::StringMap<RequestHandlerTy> DispatchMap;
+  llvm::StringMap<RequestHandlerTy> RequestDispatchTable;
+  llvm::StringMap<NotificationHandlerTy> NotificationDispatchTable;
+  const ServerInfo Info;
 };
 
 } // namespace lsp

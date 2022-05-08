@@ -14,14 +14,32 @@ protected:
       llvm::errs() << E;
       FAIL();
     }
-    S.dispatch(*V);
+    R = S.dispatch(*V);
+  }
+
+  void getResponseResult(Object &Result) {
+    if (!R)
+      FAIL();
+    auto *Obj = R->getAsObject();
+    if (!Obj)
+      FAIL();
+    Obj = Obj->getObject("result");
+    if (!Obj)
+      FAIL();
+    Result = *Obj;
   }
 
   Server S;
+  llvm::Optional<Value> R;
 };
 
 TEST_F(LSPServerTest, OnInitialize) {
   std::string Input =
       R"({"json-rpc": "2.0", "id": 42, "method": "initialize"})";
   ASSERT_NO_FATAL_FAILURE(dispatch(Input));
+  Object Obj;
+  getResponseResult(Obj);
+  auto *Info = Obj.getObject("serverInfo");
+  ASSERT_TRUE(Info);
+  ASSERT_TRUE(Info->getString("name")->equals("llls"));
 }

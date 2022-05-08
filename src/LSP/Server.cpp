@@ -10,31 +10,63 @@ using namespace llls::lsp;
 
 namespace MessageHandler {
 
-static void on_initialize(const json::Object *Message) { return; }
+#define REQUEST_HANDLER(method)                                                \
+  static void on_##method(Server &S, const json::Object *Message,              \
+                          json::Value &Result)
+#define NOTIFICATION_HANDLER(method)                                           \
+  static void on_##method(Server &S, const json::Object *Message)
+
+// Result: InitializeResult
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initializeResult
+REQUEST_HANDLER(initialize) {
+  const auto &Info = S.getInfo();
+  Result =
+      json::Object({{"capabilities", json::Object({{"hoverProvider", true}})},
+                    {"serverInfo", Info.toJSON()}});
+}
+
+NOTIFICATION_HANDLER(initialized) { return; }
 
 } // namespace MessageHandler
 
-Server::Server() { initializeDispatchMap(); }
-
-void Server::dispatch(const json::Value &Message) {
+Optional<json::Value> Server::dispatch(const json::Value &Message) {
   LLVM_DEBUG(dbgs() << "Dispatching message:\n" << Message << '\n');
   auto *Obj = Message.getAsObject();
   assert(Obj && "JSON object received by LSPServer is invalid!");
+  auto *ID = Obj->get("id");
   auto Method = Obj->getString("method");
   if (Method) {
     LLVM_DEBUG(dbgs() << "Dispatching to on_" << *Method << "()\n");
-    auto It = DispatchMap.find(*Method);
-    if (It == DispatchMap.end()) {
-      errs() << "Method handler for '" << *Method
-             << "' is not binded/implemented!";
-      llvm_unreachable("Not found in dispatch map.");
+
+    auto ReqIt = RequestDispatchTable.find(*Method);
+    if (ReqIt != RequestDispatchTable.end()) {
+      json::Value Result = nullptr;
+      ReqIt->second(*this, Obj, Result);
+      return json::Value(
+          json::Object({{"id", *ID}, {"result", Result}, {"jsonrpc", "2.0"}}));
     }
-    It->second(Obj);
+
+    auto NotIt = NotificationDispatchTable.find(*Method);
+    if (NotIt != NotificationDispatchTable.end()) {
+      NotIt->second(*this, Obj);
+      return None;
+    }
+
+    errs() << "Method handler for '" << *Method
+           << "' is not binded/implemented!\n";
   }
+
+  return None;
 }
 
-void Server::initializeDispatchMap() {
-#define BIND(method) DispatchMap[#method] = &MessageHandler::on_##method
-  BIND(initialize);
+void Server::initializeDispatchTables() {
+#define BIND(type, method)                                                     \
+  this->type##DispatchTable[#method] = &MessageHandler::on_##method
+#define BIND_REQUEST(method) BIND(Request, method)
+#define BIND_NOTIFICATION(method) BIND(Notification, method)
+  BIND_REQUEST(initialize);
+  BIND_NOTIFICATION(initialized);
 #undef BIND
+#undef BIND_REQUEST
+#undef BIND_NOTIFICATION
 }
