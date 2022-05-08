@@ -1,5 +1,6 @@
 add_library(LSP
   Protocol.cpp
+  Server.cpp
   Transport.cpp
 )
 

@@ -25,11 +25,11 @@ protected:
 };
 
 TEST_F(LSPTransportEchoTest, StandardJSON) {
-  std::string Input = R"(Content-Length: 29
+  std::string Input = R"(Content-Length: 53
 
-{"json-rpc": "2.0", "id": 42})";
+{"json-rpc": "2.0", "id": 42, "method": "initialize"})";
   auto T = transport(Input, JSONStreamStyle::Standard);
-  T->run();
+  T->run(1);
   ASSERT_EQ(Input, inputMirror());
 }
 
@@ -38,6 +38,6 @@ TEST_F(LSPTransportEchoTest, DelimitedJSON) {
 {"json-rpc": "2.0", "id": 42}
 ---)";
   auto T = transport(Input, JSONStreamStyle::Delimited);
-  T->run();
+  T->run(1);
   ASSERT_EQ(Input, inputMirror());
 }

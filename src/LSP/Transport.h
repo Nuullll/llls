@@ -1,6 +1,7 @@
 #ifndef LLLS_LSP_TRANSPORT_H
 #define LLLS_LSP_TRANSPORT_H
 
+#include "Server.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/JSON.h"
@@ -17,13 +18,14 @@ class JSONTransport {
   llvm::raw_ostream &Mirror;
   const JSONStreamStyle Style;
   llvm::SmallString<128> Buffer;
+  Server LSPServer;
 
 public:
   JSONTransport(std::FILE *In, llvm::raw_ostream *Mirror = nullptr,
                 JSONStreamStyle Style = Standard)
       : In(In), Mirror(Mirror ? *Mirror : llvm::nulls()), Style(Style) {}
 
-  void run();
+  void run(int AutoStopThreshold = 0);
 
 private:
   // Typical standard message (defined by LSP):

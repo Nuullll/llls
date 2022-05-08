@@ -1,5 +1,6 @@
 add_unittest(LLLSUnitTests LSPTests
   Protocol.cpp
+  Server.cpp
   Transport.cpp
 )
 

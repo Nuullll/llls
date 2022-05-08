@@ -49,11 +49,16 @@ static bool readNBytes(std::FILE *In, unsigned N,
 namespace llls {
 namespace lsp {
 
-void JSONTransport::run() {
+void JSONTransport::run(int AutoStopThreshold) {
   llvm::json::Value Data = nullptr;
   while (true) {
     bool OK = Style == Standard ? readStandardJSONMessage(Data)
                                 : readDelimitedJSONMessage(Data);
+    LSPServer.dispatch(Data);
+
+    // Auto stop after receiving N messages (for test only)
+    if (AutoStopThreshold > 0 && --AutoStopThreshold == 0)
+      return;
   }
 }
 
