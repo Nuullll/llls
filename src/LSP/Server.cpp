@@ -8,26 +8,18 @@
 using namespace llvm;
 using namespace llls::lsp;
 
-namespace MessageHandler {
-
-#define REQUEST_HANDLER(method)                                                \
-  static void on_##method(Server &S, const json::Object *Message,              \
-                          json::Value &Result)
-#define NOTIFICATION_HANDLER(method)                                           \
-  static void on_##method(Server &S, const json::Object *Message)
-
-// Result: InitializeResult
-// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initializeResult
-REQUEST_HANDLER(initialize) {
-  const auto &Info = S.getInfo();
-  Result =
-      json::Object({{"capabilities", json::Object({{"hoverProvider", true}})},
-                    {"serverInfo", Info.toJSON()}});
+void Server::start(int AutoStop) {
+  json::Value Data = nullptr;
+  while (true) {
+    bool OK = Transport->readJSONMessage(Data);
+    auto Response = dispatch(Data);
+    if (Response)
+      Transport->writeJSONMessage(*Response);
+    // Auto stop after receiving N messages (for test only)
+    if (AutoStop > 0 && --AutoStop == 0)
+      return;
+  }
 }
-
-NOTIFICATION_HANDLER(initialized) { return; }
-
-} // namespace MessageHandler
 
 Optional<json::Value> Server::dispatch(const json::Value &Message) {
   LLVM_DEBUG(dbgs() << "Dispatching message:\n" << Message << '\n');
@@ -58,6 +50,27 @@ Optional<json::Value> Server::dispatch(const json::Value &Message) {
 
   return None;
 }
+
+namespace MessageHandler {
+
+#define REQUEST_HANDLER(method)                                                \
+  static void on_##method(Server &S, const json::Object *Message,              \
+                          json::Value &Result)
+#define NOTIFICATION_HANDLER(method)                                           \
+  static void on_##method(Server &S, const json::Object *Message)
+
+// Result: InitializeResult
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initializeResult
+REQUEST_HANDLER(initialize) {
+  const auto &Info = S.getInfo();
+  Result =
+      json::Object({{"capabilities", json::Object({{"hoverProvider", true}})},
+                    {"serverInfo", Info.toJSON()}});
+}
+
+NOTIFICATION_HANDLER(initialized) { return; }
+
+} // namespace MessageHandler
 
 void Server::initializeDispatchTables() {
 #define BIND(type, method)                                                     \

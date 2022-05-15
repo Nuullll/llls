@@ -1,4 +1,6 @@
 #include "Server.h"
+#include "TestCommon.h"
+#include "Transport.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/raw_ostream.h"
 #include "gtest/gtest.h"
@@ -6,40 +8,32 @@
 using namespace llvm::json;
 using namespace llls::lsp;
 
-class LSPServerTest : public testing::Test {
+class LSPServerTest : public LSPTransportTest {
+  std::string OutBuf;
+  llvm::raw_string_ostream Out;
+
 protected:
-  void dispatch(llvm::StringRef JSONStr) {
-    auto V = parse(JSONStr);
-    if (auto E = V.takeError()) {
-      llvm::errs() << E;
-      FAIL();
-    }
-    R = S.dispatch(*V);
+  LSPServerTest() : Out(OutBuf) {}
+
+  std::unique_ptr<Server> makeServer(std::string InData) {
+    return std::make_unique<Server>(
+        std::move(makeTransport(InData, JSONStreamStyle::Standard, Out)));
   }
 
-  void getResponseResult(Object &Result) {
-    if (!R)
-      FAIL();
-    auto *Obj = R->getAsObject();
-    if (!Obj)
-      FAIL();
-    Obj = Obj->getObject("result");
-    if (!Obj)
-      FAIL();
-    Result = *Obj;
+  std::string &output() {
+    Out.flush();
+    return OutBuf;
   }
-
-  Server S;
-  llvm::Optional<Value> R;
 };
 
 TEST_F(LSPServerTest, OnInitialize) {
-  std::string Input =
-      R"({"json-rpc": "2.0", "id": 42, "method": "initialize"})";
-  ASSERT_NO_FATAL_FAILURE(dispatch(Input));
-  Object Obj;
-  getResponseResult(Obj);
-  auto *Info = Obj.getObject("serverInfo");
-  ASSERT_TRUE(Info);
-  ASSERT_TRUE(Info->getString("name")->equals("llls"));
+  std::string Input = R"(Content-Length: 53
+
+{"json-rpc": "2.0", "id": 42, "method": "initialize"})";
+  auto S = makeServer(Input);
+  S->start(/*AutoStop*/ 1);
+  ASSERT_EQ(
+      output(),
+      "Content-Length: 119\r\n\r\n"
+      R"({"id":42,"jsonrpc":"2.0","result":{"capabilities":{"hoverProvider":true},"serverInfo":{"name":"llls","version":"1.0"}}})");
 }
