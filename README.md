@@ -1,26 +1,23 @@
 # LLVM Language Server (WIP)
 
-A language server conformant to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/), providing language features like go to definition, find all references, hover information, etc. for LLVM assembly language.
+A language server conformant to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/), providing language features like go to definition, find all references, hover information, etc., for LLVM assembly language.
 
 ## Design
 
-### LSP Protocol (WIP)
+### LSP Server
 
-- Defines C++ structs reflecting LSP structs' semantics
-- Implements JSON serialization/deserialization
+The main server receiving and sending JSON messages over `JSONTransport`.
 
-### LSP Transport (WIP)
+Supported LSP messages:
+
+- [x] [Initialize Request](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize)
+- [x] [Initialized Notification](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized)
+
+### LSP Transport
 
 Mostly stolen from [clangd design: Entry point and JSON-RPC](https://clangd.llvm.org/design/code#entry-point-and-json-rpc).
 
-- `JSONTransport` speaks JSON-RPC protocol over stdin
-
-## Unittests (WIP)
-
-- LSP json serialization/deserialization
-  - [x] Messages
-- JSON transport
-  - [x] Mirroring input requests
+- `JSONTransport` speaks JSON-RPC protocol over stdin/stdout
 
 ## Build
 
